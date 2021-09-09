@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Shopify/sarama"
+	"kb2kafka-event-adapter/config"
 	//"kb2kafka-event-adapter/dependency"
 	//"kb2kafka-event-adapter/domain/interactor"
 	"log"
@@ -12,11 +13,12 @@ import (
 
 func main() {
 	//kafkaProperties := config.ReadKafkaConfigurationFromFile()
+	listenerConfig := config.GetListenerConfig()
 
-	http.HandleFunc("/endpoint", onPost)
+	http.HandleFunc(listenerConfig.EndpointPath, onPost)
 
-	fmt.Printf("Starting server for testing HTTP POST...\n")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	log.Println("DEBUG: starting listener")
+	if err := http.ListenAndServe(listenerConfig.ListenerAddress, nil); err != nil {
 		log.Fatal(err)
 	}
 	//db, err := dependency.NewPostgresConnection()
@@ -46,13 +48,17 @@ func main() {
 }
 
 type KBEvent struct {
+	EventType  string `json:"eventType"`  //type of event (as defined by the ExtBusEventType enum)
+	ObjectType string `json:"objectType"` //type of object being updated (as defined by the ObjectType enum)
+	AccountId  string `json:"accountId"`  //account id being updated
+	ObjectId   string `json:"objectId"`   //object id being updated
+	MetaData   string `json:"metaData"`   //event-specific metadata, serialize as JSON
+}
+
+type RatingMessage struct {
 	Id       string `json:"id"`
 	RecipeId string `json:"recipe_id"`
 	Value    int8   `json:"value"`
-	//SubscriptionId string `json:"subscription_id"`
-	//Ekey           string `json:"ekey"`
-	//Status         string `json:"status"`
-	//EffectiveDate  string `json:"effective_date"`
 }
 
 func onPost(writer http.ResponseWriter, request *http.Request) {
@@ -67,13 +73,31 @@ func onPost(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 		//TODO handle error
-		eventBytes, err := json.Marshal(event)
+		//eventBytes, err := json.Marshal(event)
 		log.Printf("DEBUG: event from KB received: %#v\n", event)
 
-		//TODO async
-		//TODO topic from config
-		pushKbEventToQueue("test-topic", eventBytes)
-		log.Printf("DEBUG: kb request pushed to queue, from=%s", request.RemoteAddr)
+		var ratingMsg RatingMessage;
+		ratingMsg.Id = event.AccountId	//TODO account or object id?
+		ratingMsg.RecipeId = event.AccountId	//string(eventBytes)	//TODO should be in "value", putting it here for now
+		ratingMsg.Value = 123
+
+		ratingMsgBytes, err := json.Marshal(ratingMsg)
+		if err == nil {
+			//TODO async
+			//TODO topic from config
+			log.Printf("DEBUG: pushing KB request to kafka, id=%s, from=%s", ratingMsg.Id, request.RemoteAddr)
+			err := pushKbEventToQueue("test-topic", ratingMsgBytes, ratingMsg.Id)
+			if err != nil {
+				var msg = fmt.Sprintf("could not push to kafka: %v", err)
+				log.Println("ERROR: " + msg)
+				http.Error(writer, msg, http.StatusInternalServerError)
+			}
+		} else {
+			var msg = fmt.Sprintf("could not create a rating message: %v", err)
+			log.Println("ERROR: " + msg)
+			http.Error(writer, msg, http.StatusInternalServerError)
+		}
+
 	default:
 		const msg = "only POST supported"
 		http.Error(writer, msg, http.StatusMethodNotAllowed)
@@ -94,8 +118,7 @@ func connectProducer(brokersUrl []string) (sarama.SyncProducer,error) {
 	return conn, nil
 }
 
-
-func pushKbEventToQueue(topic string, message []byte) error {
+func pushKbEventToQueue(topic string, message []byte, key string) error {
 	brokerUrl := []string{"localhost:9092"}	//TODO config
 	producer, err := connectProducer(brokerUrl)
 	if err != nil {
@@ -105,11 +128,13 @@ func pushKbEventToQueue(topic string, message []byte) error {
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
 		Value: sarama.StringEncoder(message),
+		Key: sarama.StringEncoder(key),
 	}
+
 	partition, offset, err := producer.SendMessage(msg)
 	if err != nil {
 		return err
 	}
-	log.Printf("Message is stored in topic(%s)/partition(%d)/offset(%d)\n", topic, partition, offset)
+	log.Printf("DEBUG: Message is stored in topic(%s)/partition(%d)/offset(%d)\n", topic, partition, offset)
 	return nil
 }

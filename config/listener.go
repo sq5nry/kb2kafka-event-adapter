@@ -1,19 +1,33 @@
 package config
 
-import "os"
+import (
+	"github.com/magiconair/properties"
+	"log"
+)
 
-func GetListenerConfig() (string, string, string) {
-	var host, port, endpointPath string
+type ListenerConfiguration struct {
+	ListenerAddress string `properties: "listenerAddress"`
+	EndpointPath string `properties: "endpointPath"`
+}
 
-	if host = os.Getenv("TODO_EP_HOST"); len(host) == 0 {
-		host = "localhost"
-	}
-	if port = os.Getenv("TODO_EP_POST"); len(port) == 0 {
-		port = "8080"
-	}
-	if endpointPath = os.Getenv("TODO_EP_PATH"); len(endpointPath) == 0 {
-		endpointPath = "endpoint"
+func GetListenerConfig() ListenerConfiguration  {
+	configuration := properties.MustLoadFile("./resources/kbEventAdapterConfig.properties", properties.UTF8)
+
+	var listenerConfiguration ListenerConfiguration
+	if err := configuration.Decode(&listenerConfiguration); err != nil {
+		log.Fatal(err)
 	}
 
-	return host, port, endpointPath
+	log.Printf("DEBUG: loaded http listener configuration: %s", configuration.String())
+
+	return listenerConfiguration
+	//if host = os.Getenv("TODO_EP_HOST"); len(host) == 0 {
+	//	host = "localhost"
+	//}
+	//if port = os.Getenv("TODO_EP_POST"); len(port) == 0 {
+	//	port = "8080"
+	//}
+	//if endpointPath = os.Getenv("TODO_EP_PATH"); len(endpointPath) == 0 {
+	//	endpointPath = "endpoint"
+	//}
 }
