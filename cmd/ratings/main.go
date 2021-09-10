@@ -9,6 +9,7 @@ import (
 	listenerConf "kb2kafka-event-adapter/config/listener"
 	"log" //TODO debug tracing instead of always evaluated printf
 	"net/http"
+	"os"
 )
 
 type KBEvent struct {
@@ -33,12 +34,11 @@ var kafkaProducer = createProducer(kafkaConfig)
 //TODO readiness & liveness probing
 func main() {
 	ensureConfigurationLoaded()
-
-	http.HandleFunc(listenerConfig.EndpointPath, onPost)
+	http.HandleFunc(listenerConfig.EndpointPath, onHttpReq)
 
 	log.Println("DEBUG: starting listener")
 	if err := http.ListenAndServe(listenerConfig.ListenerAddress, nil); err != nil {
-		log.Fatal(err)
+		log.Fatal("ERROR: " + err.Error())
 	}
 }
 
@@ -51,33 +51,34 @@ func ensureConfigurationLoaded() {
 	}
 }
 
-func onPost(writer http.ResponseWriter, request *http.Request) {
-	switch request.Method {
-	case "POST":
-		var kbEvent KBEvent
-		err := json.NewDecoder(request.Body).Decode(&kbEvent)
-		if err != nil {
-			handleError(writer, http.StatusBadRequest, "decoding error", err)
-			return
-		}
-
-		log.Printf("DEBUG: kbEvent from KB received: %#v\n", kbEvent)
-		ratingMsg := createRatingFromKbEvent(kbEvent)
-		ratingMsgBytes, err := json.Marshal(ratingMsg)
-		if err == nil {
-			log.Printf("DEBUG: pushing KB request to kafka, id=%s, from=%s", ratingMsg.Id, request.RemoteAddr)
-			err = dispatchToKafka(ratingMsgBytes, ratingMsg.Id, kafkaProducer)
-			if err != nil {
-				handleError(writer, http.StatusInternalServerError, "could not push to kafka", err)
-			}
-		} else {
-			handleError(writer, http.StatusInternalServerError, "could not create a rating message", err)
-		}
-
-	default:
+func onHttpReq(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
 		const msg = "only POST supported"
 		http.Error(writer, msg, http.StatusMethodNotAllowed)
 		log.Printf("WARN: %s, from=%s", msg, request.RemoteAddr)
+	}
+
+	var kbEvent KBEvent
+	err := json.NewDecoder(request.Body).Decode(&kbEvent)
+	if err != nil {
+		handleError(writer, http.StatusBadRequest, "decoding error", err)
+		return
+	}
+	log.Printf("DEBUG: kbEvent from KB received: %#v\n", kbEvent)
+	handleKbEvent(writer, request, kbEvent)
+}
+
+func handleKbEvent(writer http.ResponseWriter, request *http.Request, kbEvent KBEvent) {
+	ratingMsg := createRatingFromKbEvent(kbEvent)
+	ratingMsgBytes, err := json.Marshal(ratingMsg)
+	if err == nil {
+		log.Printf("DEBUG: pushing KB request to kafka, id=%s, from=%s", ratingMsg.Id, request.RemoteAddr)
+		err = dispatchToKafka(ratingMsgBytes, ratingMsg.Id, kafkaProducer)
+		if err != nil {
+			handleError(writer, http.StatusInternalServerError, "could not push to kafka", err)
+		}
+	} else {
+		handleError(writer, http.StatusInternalServerError, "could not create a rating message", err)
 	}
 }
 
@@ -120,12 +121,17 @@ func dispatchToKafka(message []byte, key string, producer *kafka.Producer) error
 }
 
 func createProducer(config *kafkaConf.KafkaConfiguration) *kafka.Producer {
+	host, err := os.Hostname()
+	if err != nil {
+		log.Fatal("ERROR: " + err.Error())
+	}
+
 	kafkaProducer, err := kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": config.BootstrapServer,
+		"client.id":         host,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	return kafkaProducer
 }
