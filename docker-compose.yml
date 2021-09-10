@@ -43,17 +43,14 @@ version: "3"
 #      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 #      KAFKA_CREATE_TOPICS: "test-topic:1:1"
 
-#go:
-#  build: .
-#  ports:
-#    - "80:8080"
-#  links:
-#    - postgres
-#  environment:
-#    DEBUG: 'true'
-#    PORT: 8080
-#    DATABASE_HOST: postgres
-#    DATABASE_PORT: 5432
-#    DATABASE_USER: goddd
-#    DATABASE_PASSWORD: goddd
-#    DATABASE_DB: goddd
+  go:
+    image: kb-event-adapter/xxxx
+    build: .
+    ports:
+      - "8082:8082"
+    environment:
+      DEBUG: 'true'
+      PORT: 8082
+      TODO_ENV_1: xxx
+      TODO_ENV_2: yyy
+      TODO_ENV_3: zzz

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"kb2kafka-event-adapter/config"
-	"log"
+	"log"	//TODO debug tracing instead of always evaluated printf
 	"net/http"
 )
 
@@ -38,6 +38,7 @@ func createProducer(config *config.KafkaConfiguration) kafka.Producer {
 	return *kafkaProducer
 }
 
+//TODO something for readiness & liveness probing
 func main() {
 	listenerConfig := config.GetListenerConfig()
 

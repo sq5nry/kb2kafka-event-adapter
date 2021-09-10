@@ -10,6 +10,7 @@ type ListenerConfiguration struct {
 	EndpointPath string `properties: "endpointPath"`
 }
 
+//TODO config location as param (env var)
 func GetListenerConfig() ListenerConfiguration  {
 	configuration := properties.MustLoadFile("./resources/kbEventAdapterConfig.properties", properties.UTF8)
 
