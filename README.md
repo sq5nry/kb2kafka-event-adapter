@@ -1,0 +1,10 @@
+```
+KAFKA_TOPIC_NAME=test-topic
+KAFKA_BOOTSTRAP_SERVER=localhost:9092
+KAFKA_GROUP_ID=group-id-1
+```
+
+```
+LISTENER_ADDRESS=:8082
+LISTENER_PATH=/callmeback
+```

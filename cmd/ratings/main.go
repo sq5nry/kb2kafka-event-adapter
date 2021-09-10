@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"kb2kafka-event-adapter/config"
-	"log"	//TODO debug tracing instead of always evaluated printf
+	kafkaConf "kb2kafka-event-adapter/config/kafka"
+	listenerConf "kb2kafka-event-adapter/config/listener"
+	"log" //TODO debug tracing instead of always evaluated printf
 	"net/http"
 )
 
@@ -24,29 +25,29 @@ type RatingMessage struct {
 	Value    int8   `json:"value"`
 }
 
-var kafkaConfig = config.ReadKafkaConfigurationFromFile()
-var kafkaProducer kafka.Producer = createProducer(&kafkaConfig)
+var kafkaConfig, kafkaConfigErr = kafkaConf.GetKafkaConfiguration()      //TODO not global, handle error
+var listenerConfig, listenerConfigErr = listenerConf.GetListenerConfig() //TODO not global, handle error
 
-func createProducer(config *config.KafkaConfiguration) kafka.Producer {
-	kafkaProducer, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": config.BootstrapServer,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+var kafkaProducer = createProducer(kafkaConfig)
 
-	return *kafkaProducer
-}
-
-//TODO something for readiness & liveness probing
+//TODO readiness & liveness probing
 func main() {
-	listenerConfig := config.GetListenerConfig()
+	ensureConfigurationLoaded()
 
 	http.HandleFunc(listenerConfig.EndpointPath, onPost)
 
 	log.Println("DEBUG: starting listener")
 	if err := http.ListenAndServe(listenerConfig.ListenerAddress, nil); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func ensureConfigurationLoaded() {
+	if kafkaConfigErr != nil {
+		log.Fatal("ERROR: " + kafkaConfigErr.Error())
+	}
+	if listenerConfigErr != nil {
+		log.Fatal("ERROR: " + listenerConfigErr.Error())
 	}
 }
 
@@ -65,7 +66,7 @@ func onPost(writer http.ResponseWriter, request *http.Request) {
 		ratingMsgBytes, err := json.Marshal(ratingMsg)
 		if err == nil {
 			log.Printf("DEBUG: pushing KB request to kafka, id=%s, from=%s", ratingMsg.Id, request.RemoteAddr)
-			err = dispatchToKafka(ratingMsgBytes, ratingMsg.Id, &kafkaProducer)
+			err = dispatchToKafka(ratingMsgBytes, ratingMsg.Id, kafkaProducer)
 			if err != nil {
 				handleError(writer, http.StatusInternalServerError, "could not push to kafka", err)
 			}
@@ -90,7 +91,7 @@ func createRatingFromKbEvent(event KBEvent) RatingMessage {
 
 func handleError(writer http.ResponseWriter, code int, description string, err error) {
 	var msg = fmt.Sprintf(description+": %v", err)
-	log.Println("ERROR: " + msg)
+	log.Printf("ERROR: %s\n", msg)
 	http.Error(writer, msg, code)
 }
 
@@ -99,7 +100,7 @@ func dispatchToKafka(message []byte, key string, producer *kafka.Producer) error
 	err := producer.Produce(&kafka.Message{
 		TopicPartition: kafka.TopicPartition{Topic: &kafkaConfig.ConsumerTopicName, Partition: kafka.PartitionAny},
 		Value:          message,
-		Key: 			[]byte(key),
+		Key:            []byte(key),
 	}, deliveryChan)
 	if err != nil {
 		log.Printf("ERROR: creating a message for delivery failed: %v\n", err)
@@ -116,4 +117,15 @@ func dispatchToKafka(message []byte, key string, producer *kafka.Producer) error
 			message, key, *ack.TopicPartition.Topic, ack.TopicPartition.Partition, ack.TopicPartition.Offset)
 		return nil
 	}
+}
+
+func createProducer(config *kafkaConf.KafkaConfiguration) *kafka.Producer {
+	kafkaProducer, err := kafka.NewProducer(&kafka.ConfigMap{
+		"bootstrap.servers": config.BootstrapServer,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return kafkaProducer
 }

@@ -2,12 +2,12 @@ package dependency
 
 import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"kb2kafka-event-adapter/config"
+	kafka2 "kb2kafka-event-adapter/config/kafka"
 	"kb2kafka-event-adapter/domain/broker"
 	"kb2kafka-event-adapter/infrastructure/kafka_broker"
 )
 
-func NewRatingConsumer(configuration config.KafkaConfiguration) broker.RatingConsumer  {
+func NewRatingConsumer(configuration kafka2.KafkaConfiguration) broker.RatingConsumer  {
 
 	kafkaConsumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers" : configuration.BootstrapServer,

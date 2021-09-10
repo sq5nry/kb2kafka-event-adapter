@@ -1,8 +1,9 @@
 FROM golang:1.17-alpine as builder
 WORKDIR /app
-ADD . .
+#ADD . .
+COPY . .
 RUN apk add build-base && \
-    go build -tags musl -o ratings ./cmd/..
+    go build -tags musl -o ratings ./cmd/...
 
 FROM alpine:latest
 WORKDIR /app
