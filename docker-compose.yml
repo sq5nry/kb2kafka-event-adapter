@@ -32,6 +32,7 @@ services:
   kafka:
     image: wurstmeister/kafka:latest
     container_name: kafka
+    hostname: kafka
     depends_on:
       - zookeeper
     ports:
@@ -43,7 +44,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_CREATE_TOPICS: "test-topic:1:1"
 
-  go:
+  kb2kafka:
     build: .
     container_name: kb2kafka-event-adapter
     ports:
@@ -51,6 +52,9 @@ services:
     environment:
       DEBUG: 'true'
       PORT: 8082
-      TODO_ENV_1: xxx
-      TODO_ENV_2: yyy
-      TODO_ENV_3: zzz
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      KAFKA_TOPIC_NAME: test-topic
+      KAFKA_GROUP_ID: group-id-1
+      LISTENER_ADDRESS: :8082
+      LISTENER_PATH: /callmeback
+#TODO 8082 in two places
