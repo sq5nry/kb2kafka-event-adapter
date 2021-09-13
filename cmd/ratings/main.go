@@ -8,19 +8,12 @@ import (
 	kafkaConf "kb2kafka-event-adapter/config/kafka"
 	listenerConf "kb2kafka-event-adapter/config/listener"
 	"kb2kafka-event-adapter/domain/broker"
+	"kb2kafka-event-adapter/domain/entity"
 	"log" //TODO debug tracing instead of always evaluated printf
 	"math/rand"
 	"net/http"
 	"os"
 )
-
-type KBEvent struct {
-	EventType  string `json:"eventType"`  //type of event (as defined by the ExtBusEventType enum)
-	ObjectType string `json:"objectType"` //type of object being updated (as defined by the ObjectType enum)
-	AccountId  string `json:"accountId"`  //account id being updated
-	ObjectId   string `json:"objectId"`   //object id being updated
-	MetaData   string `json:"metaData"`   //event-specific metadata, serialize as JSON
-}
 
 var kafkaConfig, kafkaConfigErr = kafkaConf.GetKafkaConfiguration()      //TODO not global, handle error
 var listenerConfig, listenerConfigErr = listenerConf.GetListenerConfig() //TODO not global, handle error
@@ -54,7 +47,7 @@ func onHttpReq(writer http.ResponseWriter, request *http.Request) {
 		log.Printf("WARN: %s, from=%s", msg, request.RemoteAddr)
 	}
 
-	var kbEvent KBEvent
+	var kbEvent entity.KBEvent
 	err := json.NewDecoder(request.Body).Decode(&kbEvent)
 	if err != nil {
 		handleError(writer, http.StatusBadRequest, "decoding error", err)
@@ -64,7 +57,7 @@ func onHttpReq(writer http.ResponseWriter, request *http.Request) {
 	handleKbEvent(writer, request, kbEvent)
 }
 
-func handleKbEvent(writer http.ResponseWriter, request *http.Request, kbEvent KBEvent) {
+func handleKbEvent(writer http.ResponseWriter, request *http.Request, kbEvent entity.KBEvent) {
 	ratingMsg := createRatingFromKbEvent(kbEvent)
 	ratingMsgBytes, err := json.Marshal(ratingMsg)
 	if err == nil {
@@ -78,7 +71,7 @@ func handleKbEvent(writer http.ResponseWriter, request *http.Request, kbEvent KB
 	}
 }
 
-func createRatingFromKbEvent(event KBEvent) broker.RatingMessage {
+func createRatingFromKbEvent(event entity.KBEvent) broker.RatingMessage {
 	var ratingMsg broker.RatingMessage
 	ratingMsg.Id = event.AccountId       //TODO assuming KB.AccountId
 	ratingMsg.RecipeId = event.AccountId //TODO assuming KB.AccountId
