@@ -40,17 +40,6 @@ services:
       - KILLBILL_DAO_PASSWORD=killbill
       - KILLBILL_CATALOG_URI=SpyCarAdvanced.xml
 
-  kaui:
-    image: killbill/kaui:2.0.9
-    container_name: kaui
-    ports:
-      - "9090:8080"
-    environment:
-      - KAUI_CONFIG_DAO_URL=jdbc:mysql://db:3306/kaui
-      - KAUI_CONFIG_DAO_USER=root
-      - KAUI_CONFIG_DAO_PASSWORD=killbill
-      - KAUI_KILLBILL_URL=http://killbill:8080
-
   db:
     image: killbill/mariadb:0.22
     container_name: kb_db
@@ -62,6 +51,17 @@ services:
       - "3306"
     environment:
       - MYSQL_ROOT_PASSWORD=killbill
+
+  kaui:
+    image: killbill/kaui:2.0.9
+    container_name: kaui
+    ports:
+      - "9090:8080"
+    environment:
+      - KAUI_CONFIG_DAO_URL=jdbc:mysql://db:3306/kaui
+      - KAUI_CONFIG_DAO_USER=root
+      - KAUI_CONFIG_DAO_PASSWORD=killbill
+      - KAUI_KILLBILL_URL=http://killbill:8080
 
   # KillBill to Kafka event adapter
   kb2kafka:

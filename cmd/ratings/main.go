@@ -7,7 +7,9 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	kafkaConf "kb2kafka-event-adapter/config/kafka"
 	listenerConf "kb2kafka-event-adapter/config/listener"
+	"kb2kafka-event-adapter/domain/broker"
 	"log" //TODO debug tracing instead of always evaluated printf
+	"math/rand"
 	"net/http"
 	"os"
 )
@@ -18,12 +20,6 @@ type KBEvent struct {
 	AccountId  string `json:"accountId"`  //account id being updated
 	ObjectId   string `json:"objectId"`   //object id being updated
 	MetaData   string `json:"metaData"`   //event-specific metadata, serialize as JSON
-}
-
-type RatingMessage struct {
-	Id       string `json:"id"`
-	RecipeId string `json:"recipe_id"`
-	Value    int8   `json:"value"`
 }
 
 var kafkaConfig, kafkaConfigErr = kafkaConf.GetKafkaConfiguration()      //TODO not global, handle error
@@ -82,11 +78,12 @@ func handleKbEvent(writer http.ResponseWriter, request *http.Request, kbEvent KB
 	}
 }
 
-func createRatingFromKbEvent(event KBEvent) RatingMessage {
-	var ratingMsg RatingMessage
+func createRatingFromKbEvent(event KBEvent) broker.RatingMessage {
+	var ratingMsg broker.RatingMessage
 	ratingMsg.Id = event.AccountId       //TODO assuming KB.AccountId
 	ratingMsg.RecipeId = event.AccountId //TODO assuming KB.AccountId
-	ratingMsg.Value = 123                //TODO KB data should go here
+	ratingMsg.Value = int8(rand.Int())   //TODO field needed?
+	ratingMsg.Body = event.MetaData;
 	return ratingMsg
 }
 
