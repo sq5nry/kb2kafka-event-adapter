@@ -2,11 +2,12 @@ package listener
 
 import (
 	"errors"
-	"kb2kafka-event-adapter/config"
-	"log"
+	"github.com/golang/glog"
 	"os"
 	"reflect"
 )
+
+const TAG_ENV_VAR = "env_var"
 
 type ListenerConfiguration struct {
 	ListenerAddress string `env_var:"LISTENER_ADDRESS"` // :8082
@@ -33,12 +34,14 @@ func readEnvVar(configElems reflect.Value, paramOffset int, configuration *Liste
 	name := configElems.Type().Field(paramOffset).Name
 	field, _ := reflect.TypeOf(configuration).Elem().FieldByName(name)
 
-	envVarName := field.Tag.Get(config.TAG_ENV_VAR)
-	if envVal, found := os.LookupEnv(envVarName); found {
-		log.Printf("DEBUG: initializing listener configuration from env variable=%s, value=%s\n", envVarName, envVal)
-		configElem.SetString(envVal)
-	} else {
-		return configuration, errors.New(envVarName + " env var not found")
+	envVarName := field.Tag.Get(TAG_ENV_VAR)
+	if len(envVarName) > 0 {
+		if envVal, found := os.LookupEnv(envVarName); found {
+			glog.Infof("initializing listener configuration from env variable=%s, value=%s\n", envVarName, envVal)
+			configElem.SetString(envVal)
+		} else {
+			return configuration, errors.New(envVarName + " env var not found")
+		}
 	}
 	return nil, nil
 }

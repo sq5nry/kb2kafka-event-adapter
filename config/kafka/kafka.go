@@ -2,16 +2,18 @@ package kafka
 
 import (
 	"errors"
-	"kb2kafka-event-adapter/config"
-	"log"
+	"github.com/golang/glog"
 	"os"
 	"reflect"
 )
+
+const TAG_ENV_VAR = "env_var"
 
 type KafkaConfiguration struct {
 	ConsumerTopicName string `env_var:"KAFKA_TOPIC_NAME"`
 	BootstrapServer   string `env_var:"KAFKA_BOOTSTRAP_SERVER"`
 	GroupId           string `env_var:"KAFKA_GROUP_ID"`
+	ClientId		  string
 }
 
 func GetKafkaConfiguration() (*KafkaConfiguration, error) {
@@ -27,19 +29,31 @@ func GetKafkaConfiguration() (*KafkaConfiguration, error) {
 		}
 	}
 
+	configureClientId(configuration)
+
 	return configuration, nil
+}
+
+func configureClientId(configuration *KafkaConfiguration) {
+	host, err := os.Hostname()
+	if err != nil {
+		glog.Fatal(err.Error())
+	}
+	configuration.ClientId = host
 }
 
 func readEnvVar(configElems reflect.Value, paramOffset int, configuration *KafkaConfiguration, configElem reflect.Value) (*KafkaConfiguration, error) {
 	name := configElems.Type().Field(paramOffset).Name
 	field, _ := reflect.TypeOf(configuration).Elem().FieldByName(name)
 
-	envVarName := field.Tag.Get(config.TAG_ENV_VAR)
-	if envVal, found := os.LookupEnv(envVarName); found {
-		log.Printf("DEBUG: initializing kafka configuration from env variable=%s, value=%s\n", envVarName, envVal)
-		configElem.SetString(envVal)
-	} else {
-		return configuration, errors.New(envVarName + " env var not found")
+	envVarName := field.Tag.Get(TAG_ENV_VAR)
+	if len(envVarName) > 0 {
+		if envVal, found := os.LookupEnv(envVarName); found {
+			glog.Infof("initializing kafka configuration from env variable=%s, value=%s\n", envVarName, envVal)
+			configElem.SetString(envVal)
+		} else {
+			return configuration, errors.New(envVarName + " env var not found")
+		}
 	}
 	return nil, nil
 }

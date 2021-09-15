@@ -3,7 +3,7 @@ WORKDIR /app
 #ADD . .
 COPY . .
 RUN apk add build-base && \
-    go build -tags musl -o ratings ./cmd/...
+    go build -tags musl -o adapter ./cmd/...
 
 FROM alpine:latest
 WORKDIR /app

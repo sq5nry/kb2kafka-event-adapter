@@ -69,7 +69,7 @@ func (suite *IntegrationTestSuite) TestCreateAndModifyAccount() {
 		Country:           "test_country",
 		Currency:          "EUR",
 		Email:             "test@test.com",
-		Name:              id,
+		Name:              "test_account_name",
 		Phone:             "+1234567890",
 		PostalCode:        "00000",
 		ReferenceTime:     strfmt.DateTime{},

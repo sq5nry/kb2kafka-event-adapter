@@ -1,4 +1,4 @@
-package entity
+package broker
 
 type KBEvent struct {
 	EventType  string `json:"eventType"`  //type of event (as defined by the ExtBusEventType enum)
