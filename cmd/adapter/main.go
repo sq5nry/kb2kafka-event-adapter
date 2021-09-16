@@ -11,9 +11,12 @@ import (
 	"kb2kafka-event-adapter/domain/confirmation"
 	"kb2kafka-event-adapter/domain/entity"
 	kafkaRepo "kb2kafka-event-adapter/domain/repository"
+	"kb2kafka-event-adapter/infrastructure"
 	"net/http"
 	"time"
 )
+
+const HEALTHCHECK_PATH = "/health"
 
 var configuration *config.Configuration
 var kafkaProducer *kafka.Producer
@@ -26,8 +29,12 @@ func init() {
 	kafkaConsumer = confirmation.NewConfirmationConsumer(configuration.KafkaConfiguration)
 }
 
-//TODO health check probing
+type Users struct {
+	configuration *config.Configuration
+}
+
 func main() {
+	http.HandleFunc(HEALTHCHECK_PATH, func(w http.ResponseWriter, r *http.Request) { infrastructure.OnHealthCheck(w, configuration.ListenerConfiguration) })
 	http.HandleFunc(configuration.ListenerConfiguration.EndpointPath, onHttpReq)
 
 	glog.Info("starting listener")
@@ -36,59 +43,72 @@ func main() {
 	}
 }
 
+/*
+HTTP request handler. Main program loop.
+*/
 func onHttpReq(writer http.ResponseWriter, request *http.Request) {
 	if ensureHttpMethod(writer, request) {
 		return
 	}
 
-	if kbEvent, err := extractKbEvent(request); err != nil {
-		handleError(writer, http.StatusBadRequest, "decoding error", err)
-	} else {
-		glog.Info("KbEvent received", kbEvent)
-		ratingMsg := storeKbEvent(writer, kbEvent)
+	kbEvent, err := extractKbEvent(request)
+	if err != nil {
+		sendErrorResponse(writer, http.StatusBadRequest, "decoding error", err)
+		return
+	}
 
-		handleConfirmationMessage(writer, ratingMsg)
+	ratingMsg, err := storeKbEvent(kbEvent)
+	if err != nil {
+		sendErrorResponse(writer, http.StatusInternalServerError, "could not dispatch rating message", err)
+		return
+	}
+
+	if err := handleConfirmationMessage(ratingMsg); err != nil {
+		sendErrorResponse(writer, http.StatusInternalServerError, "could not confirm persistence result", err)
 	}
 }
 
 /*
 1st step of the processing loop. Acquire KB notification event.
- */
+*/
 func extractKbEvent(request *http.Request) (*broker.KBEvent, error) {
 	var kbEvent broker.KBEvent
 	err := json.NewDecoder(request.Body).Decode(&kbEvent)
+	glog.Infof("KbEvent received [%#v]", kbEvent)
 	return &kbEvent, err
 }
 
 /*
 2nd step of the processing loop. Store KB event data into kafka.
 */
-func storeKbEvent(writer http.ResponseWriter, kbEvent *broker.KBEvent) *entity.RatingMessage {
+func storeKbEvent(kbEvent *broker.KBEvent) (*entity.RatingMessage, error) {
 	ratingMsg := entity.CreateRatingFromKbEvent(kbEvent)
 	ratingMsgBytes, err := json.Marshal(ratingMsg)
 	if err == nil {
 		glog.Infof("pushing KB request to kafka, id=%s", ratingMsg.Id)
 		err = kafkaRepo.Dispatch(ratingMsgBytes, ratingMsg.Id, kafkaProducer, configuration.KafkaConfiguration)
 		if err != nil {
-			handleError(writer, http.StatusInternalServerError, "could not push to kafka", err)
+			return ratingMsg, err
 		}
 	} else {
-		handleError(writer, http.StatusInternalServerError, "could not create a rating message", err)
+		return &entity.RatingMessage{}, err
 	}
-	return ratingMsg
+	return ratingMsg, nil
 }
 
 /*
 3rd step of the processing loop. Await confirmation from the persistence.
 */
-func handleConfirmationMessage(writer http.ResponseWriter, ratingMsg *entity.RatingMessage) {
-	cfmMessage, err := confirmation.GetMessage(kafkaConsumer, 2 * time.Second)	//TODO upfront assumption for local testing only
-	if err != nil {
-		handleError(writer, http.StatusInternalServerError, "confirmation message error", err)
-	} else {
+func handleConfirmationMessage(ratingMsg *entity.RatingMessage) error {
+	cfmMessage, err := confirmation.GetMessage(kafkaConsumer, 2*time.Second) //TODO upfront assumption for local testing only
+	if err == nil {
 		if !confirmation.ValidateConfirmationMessage(cfmMessage, ratingMsg) {
-			handleError(writer, http.StatusInternalServerError, "confirmation message error", err)
+			return err
+		} else {
+			return nil
 		}
+	} else {
+		return err
 	}
 }
 
@@ -102,7 +122,7 @@ func ensureHttpMethod(writer http.ResponseWriter, request *http.Request) bool {
 	return false
 }
 
-func handleError(writer http.ResponseWriter, code int, description string, err error) {
+func sendErrorResponse(writer http.ResponseWriter, code int, description string, err error) {
 	msg := fmt.Sprintf(description+": %v", err)
 	glog.Error(msg)
 	http.Error(writer, msg, code)

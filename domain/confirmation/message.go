@@ -31,11 +31,11 @@ func GetMessage(kafkaConsumer *kafka.Consumer, timeout time.Duration) (*Confirma
 	rawCfmMessage, err := kafkaConsumer.ReadMessage(timeout)
 
 	if err == nil {
-		glog.Infof("received confirmation message from kafka %s\n", string(rawCfmMessage.Value))
+		glog.Infof("received confirmation message from kafka %s", string(rawCfmMessage.Value))
 		cfmMessage, err := CreateConfirmationMessageFromJSON(rawCfmMessage.Value)
 		return cfmMessage, err
 	} else {
-		glog.Errorf("confirmation consumer error: %v (%v)\n", err, rawCfmMessage)
+		glog.Error("could not get confirmation message from the persistence")
 		return &ConfirmationMessage{}, err
 	}
 }

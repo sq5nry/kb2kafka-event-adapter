@@ -1,6 +1,8 @@
 package entity
 
 import (
+	"github.com/golang/glog"
+	"github.com/google/uuid"
 	"kb2kafka-event-adapter/domain/broker"
 	"math/rand"
 )
@@ -13,6 +15,11 @@ type RatingMessage struct {
 }
 
 func CreateRatingFromKbEvent(event *broker.KBEvent) *RatingMessage {
+	if len(event.AccountId) == 0 {
+		event.AccountId = uuid.New().String()
+		glog.Infof("KB event has no id, assigning id=%s", event.AccountId)
+	}
+
 	return &RatingMessage{
 		Id:       event.AccountId,	//TODO assuming KB.AccountId
 		RecipeId: event.AccountId,	//TODO assuming KB.AccountId

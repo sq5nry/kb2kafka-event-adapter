@@ -8,9 +8,12 @@ services:
   # Kafka containers
   zookeeper:
     image: wurstmeister/zookeeper:latest
+    hostname: zookeeper
     container_name: zookeeper
     expose:
       - "2181"
+    ports:
+          - 2181:2181
 
   kafka:
     image: wurstmeister/kafka:latest

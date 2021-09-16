@@ -10,8 +10,10 @@ import (
 const TAG_ENV_VAR = "env_var"
 
 type ListenerConfiguration struct {
-	ListenerAddress string `env_var:"LISTENER_ADDRESS"`
-	EndpointPath    string `env_var:"LISTENER_PATH"`
+	ListenerAddress            string `env_var:"LISTENER_ADDRESS"`
+	EndpointPath               string `env_var:"LISTENER_PATH"`
+	KafkaBrokerHealthCheckUrl  string `env_var:"KAFKA_BROKER_HEALTHCHECK_URL"`
+	KafkaClusterHealthCheckUrl string `env_var:"KAFKA_CLUSTER_HEALTHCHECK_URL"`
 }
 
 func GetListenerConfig() (*ListenerConfiguration, error) {
