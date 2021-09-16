@@ -7,5 +7,5 @@ RUN apk add build-base && \
 
 FROM alpine:latest
 WORKDIR /app
-COPY --from=builder /app/ratings .
-CMD ["/app/ratings"]
+COPY --from=builder /app/adapter .
+CMD ["/app/adapter"]
