@@ -15,6 +15,7 @@ func NewProducer(config *kafkaCfg.KafkaConfiguration) *kafka.Producer {
 	if err != nil {
 		glog.Fatal(err)
 	}
+	glog.Infof("kafka producer created: %v", kafkaProducer)
 	return kafkaProducer
 }
 

@@ -2,6 +2,7 @@
 KAFKA_TOPIC_NAME=test-topic
 KAFKA_BOOTSTRAP_SERVER=localhost:9092
 KAFKA_GROUP_ID=group-id-1
+KAFKA_RESPONSE_TOPIC_NAME=response-test-topic
 ```
 
 ```

@@ -10,9 +10,10 @@ import (
 const TAG_ENV_VAR = "env_var"
 
 type KafkaConfiguration struct {
-	ConsumerTopicName string `env_var:"KAFKA_TOPIC_NAME"`
+	ConsumerTopicName string `env_var:"KAFKA_TOPIC_NAME"`			//repository topic for KB events
 	BootstrapServer   string `env_var:"KAFKA_BOOTSTRAP_SERVER"`
 	GroupId           string `env_var:"KAFKA_GROUP_ID"`
+	ResponseTopicName string `env_var:"KAFKA_RESPONSE_TOPIC_NAME"`	//consumer topic for confirmation events from the persistence reader
 	ClientId		  string
 }
 

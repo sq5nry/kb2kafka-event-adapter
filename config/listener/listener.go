@@ -10,8 +10,8 @@ import (
 const TAG_ENV_VAR = "env_var"
 
 type ListenerConfiguration struct {
-	ListenerAddress string `env_var:"LISTENER_ADDRESS"` // :8082
-	EndpointPath    string `env_var:"LISTENER_PATH"`    // /callmeback
+	ListenerAddress string `env_var:"LISTENER_ADDRESS"`
+	EndpointPath    string `env_var:"LISTENER_PATH"`
 }
 
 func GetListenerConfig() (*ListenerConfiguration, error) {
