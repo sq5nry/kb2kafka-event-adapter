@@ -1,6 +1,5 @@
 FROM golang:1.17-alpine as builder
 WORKDIR /app
-#ADD . .
 COPY . .
 RUN apk add build-base && \
     go build -tags musl -o adapter ./cmd/...
@@ -8,4 +7,4 @@ RUN apk add build-base && \
 FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/adapter .
-CMD ["/app/adapter"]
+CMD ["/app/adapter", "-alsologtostderr=true"]
