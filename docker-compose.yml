@@ -5,7 +5,7 @@ volumes:
   db:
 
 services:
-  # Kafka containers
+  # Kafka containers for integration tests
   zookeeper:
     image: wurstmeister/zookeeper:latest
     hostname: zookeeper
@@ -30,7 +30,7 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_CREATE_TOPICS: "test-topic:1:1"
 
-  # KillBill containers
+  # KillBill containers for integration tests
   killbill:
     image: killbill/killbill:0.22.26
     container_name: killbill
@@ -78,7 +78,20 @@ services:
       KAFKA_TOPIC_NAME: test-topic
       KAFKA_GROUP_ID: group-id-1
       KAFKA_RESPONSE_TOPIC_NAME: response-test-topic
+      KAFKA_BROKER_HEALTHCHECK_URL: http://kafkahealthcheck:8000
+      KAFKA_CLUSTER_HEALTHCHECK_URL: http://kafkahealthcheck:8000/cluster
       LISTENER_ADDRESS: :8082
       LISTENER_PATH: /callmeback
-#TODO 8082 in two places
+  #TODO 8082 in two places
 
+  kafka-health-check:
+    build: ./infrastructure
+    container_name: kafka-health-check
+    depends_on:
+      - kb2kafka
+    hostname: kafkahealthcheck
+    ports:
+      - "8000:8000"
+    command: ["/app/kafka-health-check-master/kafka-health-check",
+              "-zookeeper=zookeeper:2181", "-broker-host=kafka", "-broker-port=9092",
+              "-broker-id=1001", "-check-interval=10s", "-server-port=8000"]

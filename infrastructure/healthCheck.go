@@ -25,7 +25,7 @@ func checkHealth(writer http.ResponseWriter, url string) string {
 	return msg
 }
 
-func isHealthy(healthCheckUrl string) (responseMsg string, isSuccessful bool, error error) {
+func isHealthy(healthCheckUrl string) (details string, isSuccessful bool, error error) {
 	resp, err := http.Get(healthCheckUrl)
 	if err != nil {
 		return "", false, err
@@ -41,7 +41,7 @@ func isHealthy(healthCheckUrl string) (responseMsg string, isSuccessful bool, er
 }
 
 func sendErrorResponse(writer http.ResponseWriter, code int, description string, err error) {
-	msg := fmt.Sprintf(description+": %v", err)
+	msg := fmt.Sprintf("%s: %v", description, err)
 	glog.Error(msg)
 	http.Error(writer, msg, code)
 }

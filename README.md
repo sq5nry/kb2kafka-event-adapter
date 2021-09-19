@@ -8,6 +8,6 @@ KAFKA_RESPONSE_TOPIC_NAME=response-test-topic
 ```
 LISTENER_ADDRESS=:8082
 LISTENER_PATH=/callmeback
-KAFKA_BROKER_HEALTHCHECK_URL=http://kafka-healthcheck:8000
-KAFKA_CLUSTER_HEALTHCHECK_URL=http://kafka-healthcheck:8000/cluster
+KAFKA_BROKER_HEALTHCHECK_URL=http://kafkahealthcheck:8000
+KAFKA_CLUSTER_HEALTHCHECK_URL=http://kafkahealthcheck:8000/cluster
 ```

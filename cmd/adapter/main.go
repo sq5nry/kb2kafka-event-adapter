@@ -29,10 +29,6 @@ func init() {
 	kafkaConsumer = confirmation.NewConfirmationConsumer(configuration.KafkaConfiguration)
 }
 
-type Users struct {
-	configuration *config.Configuration
-}
-
 func main() {
 	http.HandleFunc(HEALTHCHECK_PATH, func(w http.ResponseWriter, r *http.Request) { infrastructure.OnHealthCheck(w, configuration.ListenerConfiguration) })
 	http.HandleFunc(configuration.ListenerConfiguration.EndpointPath, onHttpReq)
