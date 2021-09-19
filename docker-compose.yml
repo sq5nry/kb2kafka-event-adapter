@@ -11,9 +11,9 @@ services:
     hostname: zookeeper
     container_name: zookeeper
     expose:
-      - "2181"
+      - ${ZOOKEEPER_PORT}
     ports:
-          - 2181:2181
+      - ${ZOOKEEPER_PORT}:${ZOOKEEPER_PORT}
 
   kafka:
     image: wurstmeister/kafka:latest
@@ -22,13 +22,13 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - 9092:9092
+      - ${KAFKA_PORT}:${KAFKA_PORT}
     environment:
       KAFKA_ADVERTISED_HOST_NAME: kafka
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CREATE_TOPICS: "test-topic:1:1"
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:${KAFKA_PORT}
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:${KAFKA_PORT}
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:${ZOOKEEPER_PORT}
+      KAFKA_CREATE_TOPICS: "${KB2KAFKA_TOPIC}:1:1"
 
   # KillBill containers for integration tests
   killbill:
@@ -36,7 +36,7 @@ services:
     container_name: killbill
     hostname: killbill
     ports:
-      - "8080:8080"
+      - 8080:8080
     environment:
       - KILLBILL_DAO_URL=jdbc:mysql://db:3306/killbill
       - KILLBILL_DAO_USER=root
@@ -59,7 +59,7 @@ services:
     image: killbill/kaui:2.0.9
     container_name: kaui
     ports:
-      - "9090:8080"
+      - 9090:8080
     environment:
       - KAUI_CONFIG_DAO_URL=jdbc:mysql://db:3306/kaui
       - KAUI_CONFIG_DAO_USER=root
@@ -72,17 +72,16 @@ services:
     container_name: kb2kafka-event-adapter
     hostname: kb2kafka
     ports:
-      - "8082:8082"
+      - ${KB2KAFKA_LISTENER_PORT}:${KB2KAFKA_LISTENER_PORT}
     environment:
-      KAFKA_BOOTSTRAP_SERVER: kafka:9092
-      KAFKA_TOPIC_NAME: test-topic
-      KAFKA_GROUP_ID: group-id-1
+      KAFKA_BOOTSTRAP_SERVER: kafka:${KAFKA_PORT}
+      KAFKA_TOPIC_NAME: ${KB2KAFKA_TOPIC}
+      KAFKA_GROUP_ID: ${KB2KAFKA_GROUP}
       KAFKA_RESPONSE_TOPIC_NAME: response-test-topic
-      KAFKA_BROKER_HEALTHCHECK_URL: http://kafkahealthcheck:8000
-      KAFKA_CLUSTER_HEALTHCHECK_URL: http://kafkahealthcheck:8000/cluster
-      LISTENER_ADDRESS: :8082
-      LISTENER_PATH: /callmeback
-  #TODO 8082 in two places
+      KAFKA_BROKER_HEALTHCHECK_URL: http://kafkahealthcheck:${HEALTHCHECK_PORT}
+      KAFKA_CLUSTER_HEALTHCHECK_URL: http://kafkahealthcheck:${HEALTHCHECK_PORT}/cluster
+      LISTENER_ADDRESS: :${KB2KAFKA_LISTENER_PORT}
+      LISTENER_PATH: ${KB2KAFKA_LISTENER_URL_PATH}
 
   kafka-health-check:
     build: ./infrastructure
@@ -91,7 +90,7 @@ services:
       - kb2kafka
     hostname: kafkahealthcheck
     ports:
-      - "8000:8000"
+      - ${HEALTHCHECK_PORT}:${HEALTHCHECK_PORT}
     command: ["/app/kafka-health-check-master/kafka-health-check",
-              "-zookeeper=zookeeper:2181", "-broker-host=kafka", "-broker-port=9092",
-              "-broker-id=1001", "-check-interval=10s", "-server-port=8000"]
+              "-zookeeper=zookeeper:${ZOOKEEPER_PORT}", "-broker-host=kafka", "-broker-port=${KAFKA_PORT}",
+              "-broker-id=1001", "-check-interval=10s", "-server-port=${HEALTHCHECK_PORT}"]

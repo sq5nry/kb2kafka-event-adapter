@@ -1,3 +1,8 @@
+how to run:
+
+* verify env variables in ```docker_compose.yml``` & ```.env``` files
+* run ```docker-compose up```
+* summary of variables
 ```
 KAFKA_TOPIC_NAME=test-topic
 KAFKA_BOOTSTRAP_SERVER=localhost:9092
